@@ -1,0 +1,138 @@
+from pathlib import Path
+import csv
+
+BASE_DIR = Path(__file__).parent
+
+SRC = BASE_DIR / "exports.csv"           
+DST = BASE_DIR / "exports_filtered.csv"    
+
+
+def print_csv():
+    """
+    Вивести вміст CSV-файлу на екран.
+    Спеціально не фільтруємо – показуємо саме те,
+    що є у файлі (разом зі службовими рядками).
+    """
+    print(f"\nСпроба відкрити файл: {SRC}")
+    try:
+        with SRC.open("r", encoding="utf-8-sig") as f:
+            content = f.read()
+            print("\n=== Вміст файлу ===")
+            print(content)
+            print("=== Кінець файлу ===\n")
+    except FileNotFoundError:
+        print(f"Помилка: файл {SRC} не знайдено.")
+        raise
+    except PermissionError as e:
+        print(f"Помилка доступу до файлу {SRC}: {e}")
+        raise
+    except Exception as e:
+        print(f"Несподівана помилка при читанні {SRC}: {e}")
+        raise
+
+
+def filter_by_range():
+    """
+    Зчитати файл exports.csv, знайти країни, де значення
+    показника за 2015 і 2019 роки у введеному користувачем
+    діапазоні, та записати їх у exports_filtered.csv.
+    """
+
+    while True:
+        try:
+            min_val = float(input("Введіть мінімальне значення (%): "))
+            max_val = float(input("Введіть максимальне значення (%): "))
+            if min_val > max_val:
+                print("Мінімальне значення більше максимального. Спробуйте ще раз.\n")
+                continue
+            break
+        except ValueError:
+            print("Помилка: потрібно вводити числа. Спробуйте ще раз.\n")
+
+    print(f"\nПошук країн, де 2015 і 2019 ∈ [{min_val}; {max_val}] ...")
+
+    try:
+        with SRC.open("r", encoding="utf-8-sig", newline="") as f_in:
+            raw_reader = csv.reader(f_in)
+
+            header = None
+            for row in raw_reader:
+                if row and row[0].strip().lower() == "country name":
+                    header = row
+                    break
+
+            if header is None:
+                print("Помилка: не вдалося знайти рядок із заголовками (Country Name).")
+                return
+
+            fieldnames = header
+
+            col2015 = next((name for name in fieldnames if "2015" in str(name)), None)
+            col2019 = next((name for name in fieldnames if "2019" in str(name)), None)
+
+            if col2015 is None or col2019 is None:
+                print("Помилка: у файлі не знайдено колонок з роками 2015/2019.")
+                print("Назви стовпців:", fieldnames)
+                return
+
+            reader = csv.DictReader(f_in, fieldnames=fieldnames)
+
+            filtered_rows = []
+
+            for row in reader:
+                val2015 = row.get(col2015, "").strip()
+                val2019 = row.get(col2019, "").strip()
+
+                if val2015 == "" or val2019 == "":
+                    continue
+
+                try:
+                    v2015 = float(val2015)
+                    v2019 = float(val2019)
+                except ValueError:
+                    continue
+
+                if (min_val <= v2015 <= max_val) and (min_val <= v2019 <= max_val):
+                    filtered_rows.append(row)
+
+        if not filtered_rows:
+            print("Не знайдено жодної країни, що задовольняє умови.")
+            return
+
+        try:
+            with DST.open("w", encoding="utf-8", newline="") as f_out:
+                writer = csv.DictWriter(f_out, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(filtered_rows)
+
+            print(f"Результати записано у файл: {DST}")
+            print(f"Кількість рядків у результуючому файлі: {len(filtered_rows)}")
+        except (FileNotFoundError, PermissionError) as e:
+            print(f"Помилка доступу при записі у {DST}: {e}")
+        except Exception as e:
+            print(f"Несподівана помилка при записі у {DST}: {e}")
+
+    except FileNotFoundError:
+        print(f"Помилка: файл {SRC} не знайдено.")
+    except PermissionError as e:
+        print(f"Помилка доступу до файлу {SRC}: {e}")
+    except Exception as e:
+        print(f"Несподівана помилка при читанні {SRC}: {e}")
+
+
+def main():
+    print("Лабораторна робота: Робота з даними формату CSV")
+    print("Індикатор: Exports of goods and services (% of GDP)\n")
+
+
+    try:
+        print_csv()
+    except Exception:
+        return
+
+    
+    filter_by_range()
+
+
+if __name__ == "__main__":
+    main()
