@@ -1,0 +1,215 @@
+import json
+import os
+
+DATA_FILE = "trains.json"
+RESULT_FILE = "trains_at_time.json"
+
+
+
+
+def to_minutes(h, m):
+    """Перетворення годин та хвилин у хвилини від початку доби."""
+    return h * 60 + m
+
+
+def load_data():
+    """Завантажити дані з JSON або створити файл з початковими даними."""
+    if not os.path.exists(DATA_FILE):
+       
+        trains = [
+            {"number": 101, "route": "Київ – Харків",    "arr_h": 8,  "arr_m": 30, "dep_h": 8,  "dep_m": 45},
+            {"number": 202, "route": "Львів – Київ",     "arr_h": 9,  "arr_m": 10, "dep_h": 9,  "dep_m": 20},
+            {"number": 303, "route": "Одеса – Київ",     "arr_h": 10, "arr_m": 0,  "dep_h": 10, "dep_m": 15},
+            {"number": 404, "route": "Київ – Дніпро",    "arr_h": 11, "arr_m": 25, "dep_h": 11, "dep_m": 40},
+            {"number": 505, "route": "Харків – Львів",   "arr_h": 12, "arr_m": 50, "dep_h": 13, "dep_m": 5},
+            {"number": 606, "route": "Запоріжжя – Київ", "arr_h": 13, "arr_m": 30, "dep_h": 13, "dep_m": 45},
+            {"number": 707, "route": "Київ – Одеса",     "arr_h": 14, "arr_m": 10, "dep_h": 14, "dep_m": 25},
+            {"number": 808, "route": "Київ – Львів",     "arr_h": 15, "arr_m": 0,  "dep_h": 15, "dep_m": 20},
+            {"number": 909, "route": "Дніпро – Київ",    "arr_h": 16, "arr_m": 15, "dep_h": 16, "dep_m": 30},
+            {"number": 100, "route": "Київ – Ужгород",   "arr_h": 17, "arr_m": 40, "dep_h": 18, "dep_m": 0}
+        ]
+        save_data(trains)
+        return trains
+    else:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+
+def save_data(trains):
+    """Записати дані в основний JSON-файл."""
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(trains, f, ensure_ascii=False, indent=4)
+
+
+
+def print_trains(trains):
+    """1. Виведення вмісту JSON-файлу."""
+    if not trains:
+        print("Файл порожній.")
+        return
+    print("\nПоточний розклад поїздів:")
+    for t in trains:
+        print(f"№{t['number']} | {t['route']} | "
+              f"прибуття {t['arr_h']:02d}:{t['arr_m']:02d} | "
+              f"відправлення {t['dep_h']:02d}:{t['dep_m']:02d}")
+    print()
+
+
+def add_train(trains):
+    """2. Додавання нового запису."""
+    try:
+        number = int(input("Номер поїзда: "))
+        route = input("Маршрут (звідки – куди): ")
+        arr_h = int(input("Година прибуття (0–23): "))
+        arr_m = int(input("Хвилина прибуття (0–59): "))
+        dep_h = int(input("Година відправлення (0–23): "))
+        dep_m = int(input("Хвилина відправлення (0–59): "))
+    except ValueError:
+        print("Помилка: потрібно вводити цілі числа для часу.")
+        return
+
+    train = {
+        "number": number,
+        "route": route,
+        "arr_h": arr_h,
+        "arr_m": arr_m,
+        "dep_h": dep_h,
+        "dep_m": dep_m
+    }
+    trains.append(train)
+    save_data(trains)
+    print("Поїзд додано.\n")
+
+
+def delete_train(trains):
+    """3. Видалення запису (за номером поїзда)."""
+    try:
+        number = int(input("Введіть номер поїзда, який потрібно видалити: "))
+    except ValueError:
+        print("Помилка: номер поїзда має бути числом.")
+        return
+
+    before = len(trains)
+    trains[:] = [t for t in trains if t["number"] != number]
+    if len(trains) < before:
+        save_data(trains)
+        print("Поїзд видалено.\n")
+    else:
+        print("Поїзд з таким номером не знайдено.\n")
+
+
+def search_trains(trains):
+    """4. Пошук даних у JSON-файлі за одним із полів."""
+    print("\nПоля для пошуку:")
+    print("1 - номер поїзда")
+    print("2 - маршрут (частина назви)")
+    choice = input("Ваш вибір: ").strip()
+
+    if choice == "1":
+        try:
+            number = int(input("Введіть номер поїзда: "))
+        except ValueError:
+            print("Невірний номер.")
+            return
+
+        results = [t for t in trains if t["number"] == number]
+
+    elif choice == "2":
+        text = input("Введіть текст для пошуку в маршруті: ").lower()
+        results = [t for t in trains if text in t["route"].lower()]
+
+    else:
+        print("Невірний вибір.")
+        return
+
+    if not results:
+        print("Нічого не знайдено.\n")
+    else:
+        print("\nРезультати пошуку:")
+        for t in results:
+            print(f"№{t['number']} | {t['route']} | "
+                  f"{t['arr_h']:02d}:{t['arr_m']:02d}–{t['dep_h']:02d}:{t['dep_m']:02d}")
+        print()
+
+
+def trains_at_time(trains):
+    """
+    5. Завдання варіанту:
+       визначити, які поїзди стоять на станції у заданий момент часу,
+       і записати результат в інший JSON-файл.
+    """
+    try:
+        h = int(input("Введіть годину (0–23): "))
+        m = int(input("Введіть хвилину (0–59): "))
+    except ValueError:
+        print("Помилка вводу часу.")
+        return
+
+    t = to_minutes(h, m)
+    result = []
+
+    for tr in trains:
+        arrive = to_minutes(tr["arr_h"], tr["arr_m"])
+        depart = to_minutes(tr["dep_h"], tr["dep_m"])
+       
+        if arrive <= t < depart:
+            result.append({
+                "number": tr["number"],
+                "route": tr["route"],
+                "arr_time": f"{tr['arr_h']:02d}:{tr['arr_m']:02d}",
+                "dep_time": f"{tr['dep_h']:02d}:{tr['dep_m']:02d}"
+            })
+
+    
+    out_obj = {
+        "time": f"{h:02d}:{m:02d}",
+        "trains_on_station": result
+    }
+
+    with open(RESULT_FILE, "w", encoding="utf-8") as f:
+        json.dump(out_obj, f, ensure_ascii=False, indent=4)
+
+    print(f"\nРезультат записано у файл {RESULT_FILE}")
+    if not result:
+        print("У цей момент поїздів на станції немає.\n")
+    else:
+        print("Поїзди на станції:")
+        for r in result:
+            print(f"  №{r['number']} – {r['route']}")
+        print()
+
+
+def main():
+    trains = load_data()
+
+    while True:
+        print("МЕНЮ:")
+        print("1 - показати всі поїзди (вміст JSON)")
+        print("2 - додати поїзд")
+        print("3 - видалити поїзд")
+        print("4 - пошук поїздів")
+        print("5 - поїзди, що стоять на станції у заданий час")
+        print("0 - вихід")
+
+        choice = input("Ваш вибір: ").strip()
+
+        if choice == "1":
+            print_trains(trains)
+        elif choice == "2":
+            add_train(trains)
+        elif choice == "3":
+            delete_train(trains)
+        elif choice == "4":
+            search_trains(trains)
+        elif choice == "5":
+            trains_at_time(trains)
+        elif choice == "0":
+            print("Вихід з програми.")
+            break
+        else:
+            print("Невірний пункт меню.\n")
+
+
+if __name__ == "__main__":
+    main()
+
